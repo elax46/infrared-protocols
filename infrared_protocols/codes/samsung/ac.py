@@ -4,22 +4,11 @@ from dataclasses import dataclass
 from typing import Literal
 
 from ...commands import Command
+from ...commands.samsung import SamsungACCommand as StructuralACCommand
 
 
 @dataclass(frozen=True)
-class SamsungACProtocolCommand(Command):
-    """Concrete implementation of the Samsung AC IR Command."""
-
-    modulation: int
-    timings: list[int]
-
-    def get_raw_timings(self) -> list[int]:
-        """Return the calculated raw IR timings with negative space markers."""
-        return self.timings
-
-
-@dataclass(frozen=True)
-class SamsungACCommand:
+class SamsungACStateBuilder:
     """Builder for Samsung AC IR commands (14-byte extended protocol)."""
 
     hvac_mode: Literal["off", "cool", "heat", "dry", "fan_only"]
@@ -62,24 +51,4 @@ class SamsungACCommand:
             checksum ^= byte
         payload[13] = checksum
 
-        # Generate physical raw timings (standard 38kHz carrier frequency)
-        raw_timings: list[int] = []
-
-        # Leader Pulse: 3000µs Mark, -3000µs Space (aligned to library style)
-        raw_timings.extend([3000, -3000])
-
-        # Bit blast (LSB first for each byte)
-        for byte in payload:
-            for i in range(8):
-                bit = (byte >> i) & 1
-                if bit == 1:
-                    # Bit 1: 600µs Mark, -1400µs Space
-                    raw_timings.extend([600, -1400])
-                else:
-                    # Bit 0: 600µs Mark, -400µs Space
-                    raw_timings.extend([600, -400])
-
-        # Final Stop Bit (only a pulse, no ending gap required for single frames)
-        raw_timings.extend([600])
-
-        return SamsungACProtocolCommand(modulation=38000, timings=raw_timings)
+        return StructuralACCommand(payload=payload)

@@ -1,6 +1,6 @@
 """Tests for the Samsung AC IR command encoder."""
 
-from infrared_protocols.codes.samsung.ac import SamsungACCommand
+from infrared_protocols.codes.samsung.ac import SamsungACStateBuilder
 
 
 def test_samsung_ac_command_get_raw_timings() -> None:
@@ -51,7 +51,7 @@ def test_samsung_ac_command_get_raw_timings() -> None:
         600,
     ]
 
-    builder = SamsungACCommand(
+    builder = SamsungACStateBuilder(
         hvac_mode="cool",
         target_temperature=24,
         fan_mode="high",
