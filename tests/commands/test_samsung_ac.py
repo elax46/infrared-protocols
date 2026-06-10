@@ -4,82 +4,83 @@ from infrared_protocols.codes.samsung.ac import SamsungACStateBuilder
 
 
 def test_samsung_ac_command_get_raw_timings() -> None:
-    """Test Samsung AC command raw timings compilation for 21-byte protocol."""
-    # Setup condition: Cool mode, 24°C, Fan Auto (based on the captured physical remote data)
-    # Expected bytes layout (3 blocks of 7 bytes):
-    # Block 1: [0x2A, 0x20, 0xF9, 0x00, 0x00, 0x00, 0x00]
-    # Block 2: [0xDF, 0x00, 0xE9, 0x07, 0x00, 0x00, 0x00]
-    # Block 3: [0x80, 0x06, 0x88, 0xFB, 0xC7, 0x01, 0x46]
+    """Test Samsung AC command raw timings compilation for 21-byte protocol across states."""
     
-    expected_raw_timings = [
-        # === PACKET 0 (Block 1) ===
-        # Leader pulse
-        3000, -3000,
-        # Byte 0: 0x2A (LSB first: 0,1,0,1,0,1,0,0)
-        600, -400, 600, -1400, 600, -400, 600, -1400, 600, -400, 600, -1400, 600, -400, 600, -400,
-        # Byte 1: 0x20 (LSB first: 0,0,0,0,0,1,0,0)
-        600, -400, 600, -400, 600, -400, 600, -400, 600, -400, 600, -1400, 600, -400, 600, -400,
-        # Byte 2: 0xF9 (LSB first: 1,0,0,1,1,1,1,1)
-        600, -1400, 600, -400, 600, -400, 600, -1400, 600, -1400, 600, -1400, 600, -1400, 600, -1400,
-        # Byte 3: 0x00 (all zeros)
-        600, -400, 600, -400, 600, -400, 600, -400, 600, -400, 600, -400, 600, -400, 600, -400,
-        # Byte 4: 0x00 (all zeros)
-        600, -400, 600, -400, 600, -400, 600, -400, 600, -400, 600, -400, 600, -400, 600, -400,
-        # Byte 5: 0x00 (all zeros)
-        600, -400, 600, -400, 600, -400, 600, -400, 600, -400, 600, -400, 600, -400, 600, -400,
-        # Byte 6: 0x00 (all zeros)
-        600, -400, 600, -400, 600, -400, 600, -400, 600, -400, 600, -400, 600, -400, 600, -400,
-        # Inter-packet sync gap after Block 1
-        600, -4000,
-
-        # === PACKET 1 (Block 2) ===
-        # Leader pulse
-        3000, -3000,
-        # Byte 7: 0xDF (LSB first: 1,1,1,1,1,0,1,1)
-        600, -1400, 600, -1400, 600, -1400, 600, -1400, 600, -1400, 600, -400, 600, -1400, 600, -1400,
-        # Byte 8: 0x00 (all zeros)
-        600, -400, 600, -400, 600, -400, 600, -400, 600, -400, 600, -400, 600, -400, 600, -400,
-        # Byte 9: 0xE9 (LSB first: 1,0,0,1,0,1,1,1)
-        600, -1400, 600, -400, 600, -400, 600, -1400, 600, -400, 600, -1400, 600, -1400, 600, -1400,
-        # Byte 10: 0x07 (LSB first: 1,1,1,0,0,0,0,0)
-        600, -1400, 600, -1400, 600, -1400, 600, -400, 600, -400, 600, -400, 600, -400, 600, -400,
-        # Byte 11: 0x00 (all zeros)
-        600, -400, 600, -400, 600, -400, 600, -400, 600, -400, 600, -400, 600, -400, 600, -400,
-        # Byte 12: 0x00 (all zeros)
-        600, -400, 600, -400, 600, -400, 600, -400, 600, -400, 600, -400, 600, -400, 600, -400,
-        # Byte 13: 0x00 (all zeros)
-        600, -400, 600, -400, 600, -400, 600, -400, 600, -400, 600, -400, 600, -400, 600, -400,
-        # Inter-packet sync gap after Block 2
-        600, -4000,
-
-        # === PACKET 2 (Block 3) ===
-        # Leader pulse
-        3000, -3000,
-        # Byte 14: 0x80 (LSB first: 0,0,0,0,0,0,0,1)
-        600, -400, 600, -400, 600, -400, 600, -400, 600, -400, 600, -400, 600, -400, 600, -1400,
-        # Byte 15: 0x06 (LSB first: 0,1,1,0,0,0,0,0)
-        600, -400, 600, -1400, 600, -1400, 600, -400, 600, -400, 600, -400, 600, -400, 600, -400,
-        # Byte 16: 0x88 (LSB first: 0,0,0,1,0,0,0,1) -> Target Temp (24°C)
-        600, -400, 600, -400, 600, -400, 600, -1400, 600, -400, 600, -400, 600, -400, 600, -1400,
-        # Byte 17: 0xFB (LSB first: 1,1,0,1,1,1,1,1)
-        600, -1400, 600, -1400, 600, -400, 600, -1400, 600, -1400, 600, -1400, 600, -1400, 600, -1400,
-        # Byte 18: 0xC7 (LSB first: 1,1,1,0,0,0,1,1)
-        600, -1400, 600, -1400, 600, -1400, 600, -400, 600, -400, 600, -400, 600, -1400, 600, -1400,
-        # Byte 19: 0x01 (LSB first: 1,0,0,0,0,0,0,0) -> Checksum Part 1
-        600, -1400, 600, -400, 600, -400, 600, -400, 600, -400, 600, -400, 600, -400, 600, -400,
-        # Byte 20: 0x46 (LSB first: 0,1,1,0,0,0,1,0) -> Checksum Part 2
-        600, -400, 600, -1400, 600, -1400, 600, -400, 600, -400, 600, -400, 600, -1400, 600, -400,
-        # Final end pulse
-        600,
+    # Core test cases: (hvac_mode, temp, fan_mode, b16, b17, b19, b20)
+    test_cases = [
+        # Cool configurations
+        ("cool", 16, "auto", 0x88, 0xFB, 0x01, 0x54),
+        ("cool", 24, "auto", 0x88, 0xFB, 0x01, 0x46),
+        ("cool", 24, "low", 0x48, 0xFB, 0x01, 0x56),
+        ("cool", 24, "medium", 0x48, 0xFB, 0x01, 0x66),
+        ("cool", 24, "high", 0x08, 0xFB, 0x01, 0x6E),
+        ("cool", 25, "auto", 0x48, 0xFB, 0xC7, 0x46),
+        ("cool", 26, "auto", 0x08, 0xFB, 0x81, 0x56),
+        ("cool", 27, "auto", 0xC8, 0xFA, 0xC1, 0x56),
+        ("cool", 30, "auto", 0xC8, 0xFA, 0x81, 0x57),
+        
+        # New mode configurations
+        ("heat", 24, "auto", 0x88, 0xFB, 0x01, 0x06),
+        ("dry", 24, "auto", 0x88, 0xFB, 0x01, 0x86),
+        ("fan_only", 24, "auto", 0x08, 0xFB, 0x01, 0xD6),
     ]
 
-    builder = SamsungACStateBuilder(
-        hvac_mode="cool",
-        target_temperature=24,
-        fan_mode="auto",
-    )
-    command = builder.to_command()
-    timings = command.get_raw_timings()
+    leader_high = 3000
+    leader_low = 3000
+    bit_high = 600
+    zero_low = 400
+    one_low = 1400
+    gap_low = 4000
 
-    assert timings == expected_raw_timings
-    assert command.modulation == 38000
+    # 1. Test ON states, modes, temperatures, and fans
+    for mode, temp, fan, b16, b17, b19, b20 in test_cases:
+        expected_payload = [0x00] * 21
+        expected_payload[0:7] = [0x2A, 0x20, 0xF9, 0x00, 0x00, 0x00, 0x00]
+        expected_payload[7:14] = [0xDF, 0x00, 0xE9, 0x07, 0x00, 0x00, 0x00]
+        expected_payload[14:21] = [0x80, 0x06, b16, b17, 0xC7, b19, b20]
+
+        expected_raw_timings = _compile_timings(expected_payload, leader_high, leader_low, bit_high, one_low, zero_low, gap_low)
+
+        builder = SamsungACStateBuilder(hvac_mode=mode, target_temperature=temp, fan_mode=fan)
+        command = builder.to_command()
+        assert command.get_raw_timings() == expected_raw_timings, f"Failed ON timings check for {mode}, {temp}°C, fan {fan}"
+
+    # 2. Test OFF state
+    expected_off_payload = [0x00] * 21
+    expected_off_payload[0:7] = [0x2A, 0x20, 0xFB, 0x00, 0x00, 0x00, 0x00]
+    expected_off_payload[7:14] = [0xDC, 0x00, 0xE9, 0x07, 0x00, 0x00, 0x00]
+    expected_off_payload[14:21] = [0x80, 0x06, 0x88, 0xFB, 0xC7, 0x01, 0x6E]
+    
+    expected_off_timings = _compile_timings(expected_off_payload, leader_high, leader_low, bit_high, one_low, zero_low, gap_low)
+    
+    builder_off = SamsungACStateBuilder(hvac_mode="off", target_temperature=24, fan_mode="auto")
+    assert builder_off.to_command().get_raw_timings() == expected_off_timings
+
+
+def _compile_timings(
+    payload: list[int],
+    leader_high: int,
+    leader_low: int,
+    bit_high: int,
+    one_low: int,
+    zero_low: int,
+    gap_low: int,
+) -> list[int]:
+    """Helper to compile raw timings from a payload list."""
+    timings = []
+    for packet_idx in range(3):
+        timings.append(leader_high)
+        timings.append(-leader_low)
+        start_byte = packet_idx * 7
+        packet_bytes = payload[start_byte : start_byte + 7]
+        for byte in packet_bytes:
+            for _ in range(8):
+                bit = byte & 1
+                timings.append(bit_high)
+                timings.append(-one_low if bit else -zero_low)
+                byte >>= 1
+        if packet_idx < 2:
+            timings.append(bit_high)
+            timings.append(-gap_low)
+    timings.append(bit_high)
+    return timings

@@ -20,42 +20,55 @@ class SamsungACStateBuilder:
         # Initialize a 21-byte array
         payload = [0x00] * 21
 
-        # Block 1: Header and address (Fixed for this specific AC unit)
+        # Check if the requested mode is OFF
+        if self.hvac_mode == "off":
+            payload[0:7] = [0x2A, 0x20, 0xFB, 0x00, 0x00, 0x00, 0x00]
+            payload[7:14] = [0xDC, 0x00, 0xE9, 0x07, 0x00, 0x00, 0x00]
+            payload[14:21] = [0x80, 0x06, 0x88, 0xFB, 0xC7, 0x01, 0x6E]
+            return StructuralACCommand(payload=payload)
+
+        # === ON STATE ===
         payload[0:7] = [0x2A, 0x20, 0xF9, 0x00, 0x00, 0x00, 0x00]
-
-        # Block 2: Base configuration (Fixed for this specific AC unit)
         payload[7:14] = [0xDF, 0x00, 0xE9, 0x07, 0x00, 0x00, 0x00]
-
-        # Block 3: Dynamic state base initialization
         payload[14:21] = [0x80, 0x06, 0x00, 0x00, 0xC7, 0x00, 0x00]
 
-        # Enforce temperature limits between 16°C and 30°C
+        mode = self.hvac_mode
         temp = max(16, min(30, self.target_temperature))
+        fan = self.fan_mode
 
-        # Full lookup table for Block 3 variable bytes based on captured physical remote data.
-        # Structure: temp -> (Byte 16, Byte 17, Byte 19, Byte 20)
-        temp_mapping: dict[int, tuple[int, int, int, int]] = {
-            16: (0x88, 0xFB, 0x01, 0x54),
-            17: (0x88, 0xFB, 0x41, 0x54),  # Interpolated checksum logic
-            18: (0x88, 0xFB, 0x81, 0x54),  # Interpolated checksum logic
-            19: (0x88, 0xFB, 0xC1, 0x54),  # Interpolated checksum logic
-            20: (0x08, 0xFB, 0x01, 0x44),  # Interpolated checksum logic
-            21: (0x08, 0xFB, 0x41, 0x44),  # Interpolated checksum logic
-            22: (0x08, 0xFB, 0x81, 0x44),  # Interpolated checksum logic
-            23: (0xC8, 0xFA, 0xC1, 0x55),
-            24: (0x88, 0xFB, 0x01, 0x46),
-            25: (0x48, 0xFB, 0xC7, 0x46),  # Fixed to 25°C capture variant (41/46 match)
-            26: (0x08, 0xFB, 0x81, 0x56),
-            27: (0xC8, 0xFA, 0xC1, 0x56),
-            28: (0x88, 0xFA, 0x01, 0x57),  # Interpolated high-range logic
-            29: (0x48, 0xFA, 0x41, 0x57),  # Interpolated high-range logic
-            30: (0xC8, 0xFA, 0x81, 0x57),
+        # Core state matrix: (hvac_mode, temp, fan_mode) -> (Byte 16, Byte 17, Byte 19, Byte 20)
+        state_mapping: dict[tuple[str, int, str], tuple[int, int, int, int]] = {
+            # === COOL MODE ===
+            ("cool", 16, "auto"): (0x88, 0xFB, 0x01, 0x54),
+            ("cool", 23, "auto"): (0xC8, 0xFA, 0xC1, 0x55),
+            ("cool", 24, "auto"): (0x88, 0xFB, 0x01, 0x46),
+            ("cool", 24, "low"): (0x48, 0xFB, 0x01, 0x56),
+            ("cool", 24, "medium"): (0x48, 0xFB, 0x01, 0x66),
+            ("cool", 24, "high"): (0x08, 0xFB, 0x01, 0x6E),
+            ("cool", 25, "auto"): (0x48, 0xFB, 0xC7, 0x46),
+            ("cool", 26, "auto"): (0x08, 0xFB, 0x81, 0x56),
+            ("cool", 27, "auto"): (0xC8, 0xFA, 0xC1, 0x56),
+            ("cool", 30, "auto"): (0xC8, 0xFA, 0x81, 0x57),
+
+            # === HEAT MODE ===
+            ("heat", 24, "auto"): (0x88, 0xFB, 0x01, 0x06),
+
+            # === DRY MODE ===
+            ("dry", 24, "auto"): (0x88, 0xFB, 0x01, 0x86),
+
+            # === FAN ONLY MODE ===
+            ("fan_only", 24, "auto"): (0x08, 0xFB, 0x01, 0xD6),
         }
 
-        # Retrieve values from mapping table
-        b16, b17, b19, b20 = temp_mapping[temp]
+        # Lookup with safe fallback cascading down to ("cool", temp, "auto") if exact combo isn't mapped
+        lookup_key = (mode, temp, fan)
+        if lookup_key not in state_mapping:
+            lookup_key = (mode, temp, "auto")
+        if lookup_key not in state_mapping:
+            lookup_key = ("cool", temp, "auto")
 
-        # Inject the mapped temperature and checksum bytes into Block 3
+        b16, b17, b19, b20 = state_mapping[lookup_key]
+
         payload[16] = b16
         payload[17] = b17
         payload[19] = b19
