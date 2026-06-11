@@ -91,7 +91,7 @@ class Samsung32Command(Command):
 
 
 class SamsungACCommand(Command):
-    """Samsung AC 21-byte (extended) IR command."""
+    """Samsung AC 21-byte (extended) IR command with linear bit-streaming."""
 
     payload: list[int]
 
@@ -99,7 +99,7 @@ class SamsungACCommand(Command):
         self,
         *,
         payload: list[int],
-        modulation: int = 40000,  
+        modulation: int = 40000,  # Native 40kHz carrier frequency for Samsung AC units
         repeat_count: int = 0,
     ) -> None:
         """Initialize the Samsung AC IR command."""
@@ -112,55 +112,47 @@ class SamsungACCommand(Command):
     def get_raw_timings(self) -> list[int]:
         """Get raw timings for the Samsung AC command.
 
-        Calibrated dynamically from Broadlink base64 captures:
-        - Global Leader (Packet 0): 3100µs high, 9850µs low
+        Calibrated directly from the precise pulse timeline:
+        - Leader pulse: 3100µs high, 9850µs low
         - Logical '0': 570µs high, 440µs low
         - Logical '1': 570µs high, 1460µs low
-        - Inter-packet gap: 570µs high, 3950µs low
+        - Inter-packet gap: 570µs high, 3950µs low (after byte 7 and 14)
         - End pulse: 570µs high
         """
-        global_leader_high = 3100
-        global_leader_low = 9850    
-
+        leader_high = 3100
+        leader_low = 9850
         bit_high = 570
         zero_low = 440
         one_low = 1460
-        gap_low = 3950              
+        gap_low = 3950
 
-        timings: list[int] = []
+        # Start of transmission: Global leader pulse
+        timings: list[int] = [leader_high, -leader_low]
 
-        # The 21-byte payload is split into 3 distinct packets of 7 bytes each
-        for packet_idx in range(3):
-            
-            # Il leader iniziale (la sveglia da 10ms) si manda SOLO all'inizio del pacchetto 0
-            if packet_idx == 0:
-                timings.append(global_leader_high)
-                timings.append(-global_leader_low)
-            
+        # Sequential scan of all 21 bytes in the AC payload
+        for i, byte in enumerate(self.payload):
+            # Bit blast individual byte (LSB first)
+            for _ in range(8):
+                bit = byte & 1
+                timings.append(bit_high)
+                timings.append(-one_low if bit else -zero_low)
+                byte >>= 1
 
-            # Extract the 7 bytes belonging to the current packet
-            start_byte = packet_idx * 7
-            packet_bytes = self.payload[start_byte : start_byte + 7]
-
-            # Bit blast (LSB first for each byte in the packet)
-            for byte in packet_bytes:
-                for _ in range(8):
-                    bit = byte & 1
-                    timings.append(bit_high)
-                    timings.append(-one_low if bit else -zero_low)
-                    byte >>= 1
-
-            if packet_idx < 2:
+            # Specific Samsung AC Variant 1 structural requirement:
+            # Inject an inter-packet synchronization gap after the 7th byte (index 6)
+            # and after the 14th byte (index 13).
+            if i == 6 or i == 13:
                 timings.append(bit_high)
                 timings.append(-gap_low)
 
-        # Final end pulse for the entire transmission
+        # Final end pulse to terminate the AC transmission
         timings.append(bit_high)
 
+        # Handle spaced repetition frames
         if self.repeat_count > 0:
             base_frame = timings.copy()
             for _ in range(self.repeat_count):
-                timings.append(-40000)  # Inter-frame delay between repeats
+                timings.append(-40000)  # Inter-frame delay
                 timings.extend(base_frame)
 
         return timings
