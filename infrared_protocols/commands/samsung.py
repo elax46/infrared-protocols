@@ -91,7 +91,7 @@ class Samsung32Command(Command):
 
 
 class SamsungAC2A20Command(Command):
-    """Samsung AC 2A20 21-byte IR command."""
+    """Samsung AC 2A20 21-byte IR command with linear bit-streaming."""
 
     payload: list[int]
 
@@ -99,7 +99,7 @@ class SamsungAC2A20Command(Command):
         self,
         *,
         payload: list[int],
-        modulation: int = 38000,
+        modulation: int = 40000,
         repeat_count: int = 0,
     ) -> None:
         """Initialize the Samsung AC 2A20 IR command."""
@@ -110,55 +110,21 @@ class SamsungAC2A20Command(Command):
 
     @override
     def get_raw_timings(self) -> list[int]:
-        """Get raw timings for the Samsung AC 2A20 command.
+        """Get raw timings for the Samsung AC 2A20 command."""
+        timings: list[int] = [3100, -9850]
 
-        Samsung AC protocol timing (in microseconds):
-        - Leader pulse: 3000µs high, 3000µs low
-        - Logical '0': 600µs high, 400µs low
-        - Logical '1': 600µs high, 1400µs low
-        - Inter-packet gap: 600µs high, 4000µs low
-        - End pulse: 600µs high
-        """
-        leader_high = 3000
-        leader_low = 3000
-        bit_high = 600
-        zero_low = 400
-        one_low = 1400
-        gap_low = 4000  # The synchronization pause between 7-byte blocks
+        for index, byte in enumerate(self.payload):
+            for bit in range(8):
+                timings.extend([570, -1460 if (byte >> bit) & 1 else -440])
+            if index in (6, 13):
+                timings.extend([570, -3950])
 
-        timings: list[int] = []
-
-        # The 21-byte payload is split into 3 distinct packets of 7 bytes each
-        for packet_idx in range(3):
-            # Each packet starts with its own leader pulse
-            timings.append(leader_high)
-            timings.append(-leader_low)
-
-            # Extract the 7 bytes belonging to the current packet
-            start_byte = packet_idx * 7
-            packet_bytes = self.payload[start_byte : start_byte + 7]
-
-            # Bit blast (LSB first for each byte in the packet)
-            for byte in packet_bytes:
-                for _ in range(8):
-                    bit = byte & 1
-                    timings.append(bit_high)
-                    timings.append(-one_low if bit else -zero_low)
-                    byte >>= 1
-
-            # After packet 0 and packet 1, we insert the inter-packet sync gap.
-            # Packet 2 (the last one) will bypass this and go straight to the end pulse.
-            if packet_idx < 2:
-                timings.append(bit_high)
-                timings.append(-gap_low)
-
-        # Final end pulse for the entire transmission
-        timings.append(bit_high)
+        timings.append(570)
 
         if self.repeat_count > 0:
             base_frame = timings.copy()
             for _ in range(self.repeat_count):
-                timings.append(-40000)  # Inter-frame delay between repeats
+                timings.append(-40000)
                 timings.extend(base_frame)
 
         return timings

@@ -58,15 +58,155 @@ _0292_OFF_PAYLOAD = [
 
 
 @dataclass(frozen=True, slots=True)
-class SamsungAC2A20StateBuilder:
-    """Builder for Samsung AC 2A20 21-byte IR commands."""
+class SamsungACVariant1StateBuilder:
+    """Builder for Samsung AC variant 1 2A20 21-byte IR commands."""
 
     hvac_mode: SamsungAC2A20HvacMode
     target_temperature: int
     fan_mode: SamsungACFanMode
+    swing: bool = False
+    turbo: bool = False
+    quiet: bool = False
+    smart_saver: bool = False
+    auto_clean: bool = False
 
     def to_command(self) -> Command:
         """Compile the logical state into a 21-byte payload."""
+        if self.turbo:
+            return SamsungAC2A20Command(
+                payload=[
+                    0x2A,
+                    0x20,
+                    0xF9,
+                    0x00,
+                    0x00,
+                    0x00,
+                    0x00,
+                    0xDF,
+                    0x00,
+                    0x61,
+                    0xFF,
+                    0x3B,
+                    0xC0,
+                    0x08,
+                    0x78,
+                    0x00,
+                    0x00,
+                    0x00,
+                    0x00,
+                    0x00,
+                    0x00,
+                ]
+            )
+
+        if self.quiet:
+            return SamsungAC2A20Command(
+                payload=[
+                    0x2A,
+                    0x20,
+                    0xF8,
+                    0x00,
+                    0x00,
+                    0x00,
+                    0x02,
+                    0xDF,
+                    0x00,
+                    0x71,
+                    0xFF,
+                    0x38,
+                    0xC0,
+                    0x08,
+                    0x78,
+                    0x00,
+                    0x00,
+                    0x00,
+                    0x00,
+                    0x00,
+                    0x00,
+                ]
+            )
+
+        if self.swing:
+            return SamsungAC2A20Command(
+                payload=[
+                    0x14,
+                    0x90,
+                    0x7C,
+                    0x00,
+                    0x00,
+                    0x00,
+                    0x80,
+                    0x6F,
+                    0x80,
+                    0xC0,
+                    0x6B,
+                    0x1C,
+                    0x60,
+                    0x04,
+                    0x3C,
+                    0x00,
+                    0x00,
+                    0x00,
+                    0x00,
+                    0x00,
+                    0x00,
+                ]
+            )
+
+        if self.smart_saver:
+            return SamsungAC2A20Command(
+                payload=[
+                    0x28,
+                    0x20,
+                    0xF9,
+                    0x00,
+                    0x00,
+                    0x00,
+                    0x00,
+                    0xDF,
+                    0x00,
+                    0x69,
+                    0xD7,
+                    0x3F,
+                    0xC0,
+                    0x08,
+                    0x78,
+                    0x00,
+                    0x00,
+                    0x00,
+                    0x00,
+                    0x00,
+                    0x00,
+                ]
+            )
+
+        if self.auto_clean:
+            return SamsungAC2A20Command(
+                payload=[
+                    0x2A,
+                    0x20,
+                    0xF9,
+                    0x00,
+                    0x00,
+                    0x00,
+                    0x00,
+                    0xDF,
+                    0x00,
+                    0x61,
+                    0xFF,
+                    0x78,
+                    0xC1,
+                    0x08,
+                    0x78,
+                    0x00,
+                    0x00,
+                    0x00,
+                    0x00,
+                    0x00,
+                    0x00,
+                ]
+            )
+
         payload = [0x00] * 21
 
         if self.hvac_mode == "off":
@@ -79,11 +219,13 @@ class SamsungAC2A20StateBuilder:
         payload[7:14] = [0xDF, 0x00, 0xE9, 0x07, 0x00, 0x00, 0x00]
         payload[14:21] = [0x80, 0x06, 0x00, 0x00, 0xC7, 0x00, 0x00]
 
-        mode = self.hvac_mode
         temp = max(16, min(30, self.target_temperature))
-        fan = self.fan_mode
+        lookup_key = (self.hvac_mode, temp, self.fan_mode)
 
-        state_mapping: dict[tuple[str, int, str], tuple[int, int, int, int]] = {
+        state_mapping: dict[
+            tuple[SamsungAC2A20HvacMode, int, SamsungACFanMode],
+            tuple[int, int, int, int],
+        ] = {
             ("cool", 16, "auto"): (0x88, 0xFB, 0x01, 0x54),
             ("cool", 23, "auto"): (0xC8, 0xFA, 0xC1, 0x55),
             ("cool", 24, "auto"): (0x88, 0xFB, 0x01, 0x46),
@@ -99,9 +241,8 @@ class SamsungAC2A20StateBuilder:
             ("fan_only", 24, "auto"): (0x08, 0xFB, 0x01, 0xD6),
         }
 
-        lookup_key = (mode, temp, fan)
         if lookup_key not in state_mapping:
-            lookup_key = (mode, temp, "auto")
+            lookup_key = (self.hvac_mode, temp, "auto")
         if lookup_key not in state_mapping:
             lookup_key = ("cool", temp, "auto")
 
@@ -163,4 +304,5 @@ def _0292_section_checksum(section: list[int]) -> int:
     return total ^ 0xFF
 
 
-SamsungACStateBuilder = SamsungAC2A20StateBuilder
+SamsungAC2A20StateBuilder = SamsungACVariant1StateBuilder
+SamsungACStateBuilder = SamsungACVariant1StateBuilder
