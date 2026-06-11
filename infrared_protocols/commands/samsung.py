@@ -99,12 +99,11 @@ class SamsungACCommand(Command):
         self,
         *,
         payload: list[int],
-        modulation: int = 38000,
+        modulation: int = 40000,  
         repeat_count: int = 0,
     ) -> None:
         """Initialize the Samsung AC IR command."""
         super().__init__(modulation=modulation, repeat_count=repeat_count)
-        # Updated validation to expect 21 bytes instead of 14
         if len(payload) != 21:
             raise ValueError("Samsung AC payload must be exactly 21 bytes")
         self.payload = payload
@@ -115,34 +114,29 @@ class SamsungACCommand(Command):
 
         Calibrated dynamically from Broadlink base64 captures:
         - Global Leader (Packet 0): 3100µs high, 9850µs low
-        - Subsequent Leaders (Packet 1 & 2): 3100µs high, 2950µs low
         - Logical '0': 570µs high, 440µs low
         - Logical '1': 570µs high, 1460µs low
         - Inter-packet gap: 570µs high, 3950µs low
         - End pulse: 570µs high
         """
         global_leader_high = 3100
-        global_leader_low = 9850    # Il pauso-ne iniziale da ~10ms
-
-        packet_leader_high = 3100
-        packet_leader_low = 2950    # Il leader corto per i pacchetti 1 e 2
+        global_leader_low = 9850    
 
         bit_high = 570
         zero_low = 440
         one_low = 1460
-        gap_low = 3950              # Lo spazio inter-pacchetto tra i blocchi da 7 byte
+        gap_low = 3950              
 
         timings: list[int] = []
 
         # The 21-byte payload is split into 3 distinct packets of 7 bytes each
         for packet_idx in range(3):
-            # MODIFICA QUI: Gestione asimmetrica dell'header del pacchetto
+            
+            # Il leader iniziale (la sveglia da 10ms) si manda SOLO all'inizio del pacchetto 0
             if packet_idx == 0:
                 timings.append(global_leader_high)
                 timings.append(-global_leader_low)
-            else:
-                timings.append(packet_leader_high)
-                timings.append(-packet_leader_low)
+            
 
             # Extract the 7 bytes belonging to the current packet
             start_byte = packet_idx * 7
@@ -156,7 +150,6 @@ class SamsungACCommand(Command):
                     timings.append(-one_low if bit else -zero_low)
                     byte >>= 1
 
-            # After packet 0 and packet 1, we insert the inter-packet sync gap.
             if packet_idx < 2:
                 timings.append(bit_high)
                 timings.append(-gap_low)
