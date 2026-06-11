@@ -120,12 +120,12 @@ class SamsungACCommand(Command):
         - Inter-packet gap: 600µs high, 4000µs low
         - End pulse: 600µs high
         """
-        leader_high = 3000
-        leader_low = 3000
-        bit_high = 600
-        zero_low = 400
-        one_low = 1400
-        gap_low = 4000  # The synchronization pause between 7-byte blocks
+        leader_high = 3100
+        leader_low = 9850   
+        bit_high = 550      
+        zero_low = 450      
+        one_low = 1450       
+        gap_low = 3950      
 
         timings: list[int] = []
 
