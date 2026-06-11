@@ -33,32 +33,33 @@ class DysonCoolCommand(Command):
 
     @override
     def get_raw_timings(self) -> list[int]:
-        """Compile the 15-bit payload into raw IR microsecond timings."""
-        leader_high = 1480
-        leader_low = 520
-        bit_high = 520
-        zero_low = 500
-        one_low = 1020
+        """Compile the 15-bit payload into raw IR microsecond timings matched to your actual remote."""
+        
+        leader_high = 8940
+        leader_low = 4440
+        bit_high = 590
+        zero_low = 520
+        one_low = 1630
         gap_low = 4000
 
         timings: list[int] = []
         
-        # Transmit back-to-back bursts based on the requested repeat count
         for packet_idx in range(self.repeat_count + 1):
-            # Leader pulse
-            timings.append(leader_high)
-            timings.append(-leader_low)
             
-            # Serialize 15 bits (MSB first for standard Dyson structural frames)
+            timings.append(leader_high)
+            timings.append(leader_low)
+            
+            
             data = self.payload
             for i in range(14, -1, -1):
                 bit = (data >> i) & 1
                 timings.append(bit_high)
-                timings.append(-one_low if bit else -zero_low)
+                timings.append(one_low if bit else zero_low)
                     
-            # Stop bit marker / inter-packet gap
             timings.append(bit_high)
+            
+            
             if packet_idx < self.repeat_count:
-                timings.append(-gap_low)
+                timings.append(gap_low)
             
         return timings
