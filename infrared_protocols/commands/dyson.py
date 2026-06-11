@@ -6,13 +6,13 @@ from . import Command
 
 
 class DysonCoolCommand(Command):
-    """Dyson Cool IR command encoder supporting the 15-bit protocol.
+    """Dyson Cool IR command encoder supporting the 16-bit NEC-like protocol.
 
     Timings layout (in microseconds):
-    - Leader pulse: 1480µs high, 520µs low
-    - Logical '0': 520µs high, 500µs low
-    - Logical '1': 520µs high, 1020µs low
-    - End pulse: 520µs high
+    - Leader pulse: 8940µs high, 4440µs low
+    - Logical '0': 590µs high, 520µs low
+    - Logical '1': 590µs high, 1630µs low
+    - End pulse: 590µs high
     - Inter-packet gap: 4000µs low
     """
 
@@ -27,8 +27,8 @@ class DysonCoolCommand(Command):
     ) -> None:
         """Initialize the Dyson Cool structural command."""
         super().__init__(modulation=modulation, repeat_count=repeat_count)
-        if payload < 0 or payload > 0x7FFF:
-            raise ValueError("Dyson payload must be a valid 15-bit integer")
+        if payload < 0 or payload > 0xFFFF:
+            raise ValueError("Dyson payload must be a valid 16-bit integer")
         self.payload = payload
 
     @override
@@ -45,18 +45,16 @@ class DysonCoolCommand(Command):
         timings: list[int] = []
         
         for packet_idx in range(self.repeat_count + 1):
-            # Preambolo
             timings.append(leader_high)
             timings.append(leader_low)
             
             data = self.payload
-            # CORREZIONE: Range impostato a 16 bit (da 15 a 0) per non tagliare l'MSB del payload
             for i in range(15, -1, -1):
                 bit = (data >> i) & 1
                 timings.append(bit_high)
                 timings.append(one_low if bit else zero_low)
                     
-            # Bit di stop finale
+            
             timings.append(bit_high)
             
             if packet_idx < self.repeat_count:
