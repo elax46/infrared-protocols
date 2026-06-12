@@ -1,19 +1,8 @@
-"""Dyson infrared protocol structural command."""
-
 from typing import override
 from . import Command
 
 class DysonCoolCommand(Command):
-    """Dyson Cool IR command encoder supporting the 16-bit NEC-like protocol.
-
-    Timings layout (in microseconds):
-    - Leader pulse: 8940µs high, 4440µs low
-    - Logical '0': 590µs high, 520µs low
-    - Logical '1': 590µs high, 1630µs low
-    - End pulse: 590µs high
-    - Inter-packet gap: 4000µs low
-    """
-
+    """Dyson Cool infrared command."""
     payload: int
 
     def __init__(
@@ -23,16 +12,23 @@ class DysonCoolCommand(Command):
         modulation: int = 38000,
         repeat_count: int = 1,
     ) -> None:
-        """Initialize the Dyson Cool structural command."""
+        """Initialize a Dyson Cool infrared command.
+        
+        Args:
+            payload: The 24-bit payload data.
+            modulation: The modulation frequency in Hz (default: 38000).
+            repeat_count: The number of times to repeat the command (default: 1).
+            
+        Raises:
+            ValueError: If payload is not a valid 24-bit integer.
+        """
         super().__init__(modulation=modulation, repeat_count=repeat_count)
-        if payload < 0 or payload > 0xFFFF:
-            raise ValueError("Dyson payload must be a valid 16-bit integer")
+        if payload < 0 or payload > 0xFFFFFF:
+            raise ValueError("Dyson payload must be a valid 24-bit integer")
         self.payload = payload
 
     @override
     def get_raw_timings(self) -> list[int]:
-        """Compile the 16-bit payload into raw IR microsecond timings matched to your actual remote."""
-        
         leader_high = 8940
         leader_low = 4440
         bit_high = 590
@@ -47,7 +43,7 @@ class DysonCoolCommand(Command):
             timings.append(leader_low)
             
             data = self.payload
-            for i in range(15, -1, -1):
+            for i in range(24):
                 bit = (data >> i) & 1
                 timings.append(bit_high)
                 timings.append(one_low if bit else zero_low)

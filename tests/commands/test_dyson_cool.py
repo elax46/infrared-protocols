@@ -5,13 +5,17 @@ from infrared_protocols.commands.dyson import DysonCoolCommand
 
 
 def test_dyson_cool_payload_validation() -> None:
-    """Verify Dyson cool command payload validation rejects invalid values."""
-    with pytest.raises(ValueError, match="Dyson payload must be a valid 16-bit integer"):
-        DysonCoolCommand(payload=0x10000)
+    """Test that DysonCoolCommand validates 24-bit payload constraint."""
+    with pytest.raises(ValueError, match="Dyson payload must be a valid 24-bit integer"):
+        DysonCoolCommand(payload=0x1000000)
 
 
 def test_dyson_cool_command_get_raw_timings() -> None:
-    """Verify raw timing generation for the Dyson cool off action."""
+    """Verify raw timings for a simple 'off' Dyson Cool command.
+
+    Ensures the command produced by DysonCoolStateBuilder(action="off")
+    yields the expected leading and subsequent timing values.
+    """
     builder = DysonCoolStateBuilder(action="off")
     command = builder.to_command()
     timings = command.get_raw_timings()
@@ -36,7 +40,12 @@ def test_dyson_cool_command_get_raw_timings() -> None:
     ],
 )
 def test_dyson_cool_extended_actions(action: str) -> None:
-    """Verify extended Dyson cool actions generate valid raw timings."""
+    """Ensure extended Dyson Cool actions produce a valid timing sequence.
+
+    Verifies that for various extended actions the generated command has
+    a non-empty timing list and that the leading timings match expected
+    Dyson header values.
+    """
     builder = DysonCoolStateBuilder(action=action)
     command = builder.to_command()
     timings = command.get_raw_timings()
