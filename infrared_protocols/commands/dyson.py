@@ -1,9 +1,7 @@
 """Dyson infrared protocol structural command."""
 
 from typing import override
-
 from . import Command
-
 
 class DysonCoolCommand(Command):
     """Dyson Cool IR command encoder supporting the 16-bit NEC-like protocol.
@@ -49,7 +47,7 @@ class DysonCoolCommand(Command):
             timings.append(leader_low)
             
             data = self.payload
-            for i in range(16):
+            for i in range(15, -1, -1):
                 bit = (data >> i) & 1
                 timings.append(bit_high)
                 timings.append(one_low if bit else zero_low)
