@@ -88,48 +88,7 @@ class Samsung32Command(Command):
                 timings.extend(base_frame)
 
         return timings
-
-
-class SamsungAC2A20Command(Command):
-    """Samsung AC 2A20 21-byte IR command with linear bit-streaming."""
-
-    payload: list[int]
-
-    def __init__(
-        self,
-        *,
-        payload: list[int],
-        modulation: int = 40000,
-        repeat_count: int = 0,
-    ) -> None:
-        """Initialize the Samsung AC 2A20 IR command."""
-        super().__init__(modulation=modulation, repeat_count=repeat_count)
-        if len(payload) != 21:
-            raise ValueError("Samsung AC 2A20 payload must be exactly 21 bytes")
-        self.payload = payload
-
-    @override
-    def get_raw_timings(self) -> list[int]:
-        """Get raw timings for the Samsung AC 2A20 command."""
-        timings: list[int] = [3100, -9850]
-
-        for index, byte in enumerate(self.payload):
-            for bit in range(8):
-                timings.extend([570, -1460 if (byte >> bit) & 1 else -440])
-            if index in (6, 13):
-                timings.extend([570, -3950])
-
-        timings.append(570)
-
-        if self.repeat_count > 0:
-            base_frame = timings.copy()
-            for _ in range(self.repeat_count):
-                timings.append(-40000)
-                timings.extend(base_frame)
-
-        return timings
-
-
+    
 class SamsungAC0292Command(Command):
     """Samsung AC 0292 21-byte IR command."""
 
@@ -162,4 +121,3 @@ class SamsungAC0292Command(Command):
         return timings
 
 
-SamsungACCommand = SamsungAC2A20Command
