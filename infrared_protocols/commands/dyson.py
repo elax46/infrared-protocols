@@ -13,11 +13,11 @@ class DysonCoolCommand(Command):
     """Dyson Cool infrared command.
 
     Protocol specification:
-      - Header: 2440us mark, 870us space
-      - Bit mark: 850us (constant)
-      - Bit space: 850us = "0", 1660us = "1"
+      - Header: 2196us mark, 787us space
+      - Bit mark: 787us (constant)
+      - Bit space: 787us = "0", 1591us = "1"
       - 15-bit payload, MSB-first: 1001000 (7-bit preamble) + 8-bit command
-      - Footer: 850us mark
+      - Footer: 787us mark
     """
 
     payload: int
@@ -46,12 +46,12 @@ class DysonCoolCommand(Command):
 
     @override
     def get_raw_timings(self) -> list[int]:
-        header_mark = 2440
-        header_space = 870
-        bit_mark = 850
-        zero_space = 850
-        one_space = 1660
-        footer_mark = 850
+        header_mark = 2196
+        header_space = 787
+        bit_mark = 787
+        zero_space = 787
+        one_space = 1591
+        footer_mark = 787
 
         timings: list[int] = [header_mark, -header_space]
 
